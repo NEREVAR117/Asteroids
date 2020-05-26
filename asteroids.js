@@ -1,0 +1,398 @@
+let canvas;
+let ctx;
+let canvasWidth = 1400;
+let canvasHeight = 800;
+let ship;
+let keys = [];
+let bullets = [];
+let asteroids = [];
+let score = 0;
+let lives = 3;
+
+document.addEventListener('DOMContentLoaded', SetupCanvas);
+
+function SetupCanvas()
+{
+    canvas = document.getElementById('my-canvas');
+    ctx = canvas.getContext('2d');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    ctx.fillStyle = 'black'
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+    ship = new Ship();
+
+    //Generates the asteroids
+    for(let i = 0; i < 8; i++)
+    {
+        asteroids.push(new Asteroid());
+
+    }
+
+    document.body.addEventListener("keydown", function(e)
+    {
+        keys[e.keyCode] = true;
+    });
+
+    document.body.addEventListener("keyup", function(e)
+    {
+        keys[e.keyCode] = false;
+        if(e.keyCode === 32)
+        {
+            bullets.push(new Bullet(ship.angle));
+        }
+
+    });
+    
+
+    Render();
+}
+
+
+
+class Ship
+{
+    constructor()
+    {
+        this.visible = true;
+        this.x = canvasWidth / 2;
+        this.y = canvasHeight / 2;
+        this.movingForward = false;
+        this.speed = 0.1;
+        this.velX = 0;
+        this.velY = 0;
+        this.rotateSpeed = 0.001;
+        this.radius = 15;
+        this.angle = 0;
+        this.strokeColor = 'white';
+
+        // Handles bullet spawn origin
+        this.noseX = canvasWidth / 2 + 15;
+        this.noseY = canvasHeight / 2;
+    }
+
+    // Passes in a 1 or -1 depending on clockwise or counter-clockwise rotation. Makes changing directions easy
+    Rotate(dir)
+    {
+        this.angle += this.rotateSpeed * dir;
+    }
+
+    Update()
+    {
+        let radians = this.angle / Math.PI * 180;
+        // oldX + cos(radians) * distance
+        // oldY + sin(radians) * distance
+
+        if(this.movingForward)
+        {
+            this.velX += Math.cos(radians) * this.speed;
+            this.velY += Math.sin(radians) * this.speed;
+        }
+        
+        // If ship goes too far left off the screen, it resets
+        if(this.x < this.radius)
+            {this.x = canvas.width;}
+        // If ship goes too far right off the screen, it resets
+        if(this.x > canvas.width)
+            {this.x = this.radius;}
+
+        // If ship goes too far up off the screen, it resets
+        if(this.y < this.radius)
+            {this.y = canvas.height;}
+        // If ship goes too far down off the screen, it resets
+        if(this.y > canvas.height)
+            {this.y = this.radius;}
+
+        // This slows the ship down on its own
+        this.velX *= 0.99;
+        this.velY *= 0.99;
+
+        this.x -= this.velX;
+        this.y -= this.velY;
+    }
+
+    Draw()
+    {
+        ctx.strokeStyle = this.strokeColor;
+        ctx.beginPath();
+        let vertAngle = ((Math.PI * 2) / 3);
+        let radians = this.angle / Math.PI * 180;
+
+        // Draws where bullets spawn at (tip of ship nose)
+        this.noseX = this.x - this.radius * Math.cos(radians);
+        this.noseY = this.y - this.radius * Math.sin(radians);
+
+        for(let i = 0; i < 3; i++)
+        {
+            ctx.lineTo(this.x - this.radius * Math.cos(vertAngle * i + radians), this.y - this.radius * Math.sin(vertAngle * i + radians))
+        }
+
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+
+
+
+class Bullet
+{
+    constructor(angle)
+    {
+        this.visable = true;
+        this.x = ship.noseX;
+        this.y = ship.noseY;
+        this.angle = angle;
+        this.height = 4;
+        this.width = 4;
+        this.speed = 10;
+        this.velX = 0;
+        this.velY = 0;
+    }
+
+    Update()
+    {
+        var radians = this.angle / Math.PI * 180;
+        this.x -= Math.cos(radians) * this.speed;
+        this.y -= Math.sin(radians) * this.speed;
+    }
+
+    Draw()
+    {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+}
+
+
+
+class Asteroid
+{
+    constructor(x, y, radius, level, collisionRadius)
+    {
+        this.visible = true;
+        this.x = x || Math.floor(Math.random() * canvasWidth);
+        this.y = y || Math.floor(Math.random() * canvasHeight);
+        this.speed = 3;
+        this.radius = radius || 50;
+        this.angle = Math.floor(Math.random() * 359);
+        this.strokeColor = 'white';
+        this.collisionRadius = collisionRadius || 46;
+        this.level = level || 1;
+    }
+
+    Update()
+    {
+        var radians = this.angle / Math.PI * 180;
+        this.x += Math.cos(radians) * this.speed;
+        this.y += Math.sin(radians) * this.speed;
+
+
+        // If asteroid goes too far left off the screen, it resets
+        if(this.x < this.radius)
+            {this.x = canvas.width;}
+        // If asteroid goes too far right off the screen, it resets
+        if(this.x > canvas.width)
+            {this.x = this.radius;}
+
+        // If asteroid goes too far up off the screen, it resets
+        if(this.y < this.radius)
+            {this.y = canvas.height;}
+        // If asteroid goes too far down off the screen, it resets
+        if(this.y > canvas.height)
+            {this.y = this.radius;}
+
+        // This turns the asteroids
+        // this.angle += 0.0001;
+    }
+
+    Draw()
+    {
+        ctx.beginPath();
+        let vertAngle = ((Math.PI * 2) / 6);
+        var radians = this.angle / Math.PI * 180;
+
+        for(let i = 0; i < 6; i++)
+        {
+            ctx.lineTo(this.x - this.radius * Math.cos(vertAngle * i + radians), this.y - this.radius * Math.sin(vertAngle * i + radians))
+        }
+
+        ctx.closePath();
+        ctx.stroke();
+    }
+}
+
+
+
+function CircleCollision(p1x, p1y, r1, p2x, p2y, r2)
+{
+    let radiusSum;
+    let xDiff;
+    let yDiff;
+ 
+    radiusSum = r1 + r2;
+    xDiff = p1x - p2x;
+    yDiff = p1y - p2y;
+ 
+    if (radiusSum > Math.sqrt((xDiff * xDiff) + (yDiff * yDiff)))
+    {
+        return true;
+    }
+    
+    else
+    {
+        return false;
+    }
+}
+
+
+
+function DrawLifeShips()
+{
+    let startX = 1350;
+    let startY = 10;
+    let points = [[9, 9], [-9, 9]]
+    ctx.strokeStyle = 'white';
+    
+    for(let i = 0; i < lives; i++)
+    {
+        ctx.beginPath()
+        ctx.moveTo(startX, startY);
+        
+        for(let j = 0; j < points.length; j++)
+        {
+            ctx.lineTo(startX + points[j][0], startY + points[j][1]);
+        }
+
+        ctx.closePath();
+        ctx.stroke();
+        startX -= 30;
+    }
+}
+
+
+
+function Render()
+{
+    // If user is hitting W to go forward
+    ship.movingForward = (keys[87]);
+
+    // If user is hitting D to turn right
+    if(keys[68])
+    {
+        ship.Rotate(1)
+    }
+
+    // If user is hitting A to turn left
+    if(keys[65])
+    {
+        ship.Rotate(-1)
+    }
+
+    // Clears the screen for each frame redraw of ship
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // Draws score
+    ctx.fillStyle = 'white';
+    ctx.font = '21px Arial';
+    ctx.fillText('SCORE: ' + score.toString(), 20, 35);
+
+    // Checks and triggers Game Over
+    if(lives <= 0)
+    {
+        ship.visible = false;
+        ctx.fillstyle = 'white';
+        ctx.font = '50px Arial';
+        ctx.fillText('GAME OVER', canvasWidth / 2 - 150, canvasHeight / 2);
+    }
+
+    DrawLifeShips();
+
+    // Checks for ship to asteroid collision
+    if (asteroids.length !== 0)
+    {
+        for(let k = 0; k < asteroids.length; k++)
+        {
+            // The 11 is the ship radius for collision
+            if(CircleCollision(ship.x, ship.y, 11, asteroids[k].x, asteroids[k].y, asteroids[k].collisionRadius))
+            {
+                // Create boom / explosion by referencing creation of bullets
+                ship.x = canvasWidth / 2;
+                ship.y = canvasHeight / 2;
+                ship.velX = 0;
+                ship.velY = 0;
+                lives -= 1;
+            }
+        }
+    }
+
+    // Checks for bullet to asteroid collision
+    if(asteroids.length !== 0 && bullets.length !== 0)
+    {
+        // Breaks out of nested for loop if needed
+        loop1:
+            for(let l = 0; l < asteroids.length; l++)
+            {
+                for(let m = 0; m < bullets.length; m++)
+                {
+                    // 3 is the bullet radius
+                    if(CircleCollision(bullets[m].x, bullets[m].y, 3, asteroids[l].x, asteroids[l].y, asteroids[l].collisionRadius))
+                    {
+                        // Triggers on first level of asteroids
+                        if(asteroids[l].level === 1)
+                        {
+                            // Spawns two smaller asteroids from a larger one
+                            // 25 is the asteroid radius, 2 is the level of asteroid, 22 is the collision radius
+                            asteroids.push(new Asteroid(asteroids[l].x - 5, asteroids[l].y - 5, 25, 2, 22));
+                            asteroids.push(new Asteroid(asteroids[l].x + 5, asteroids[l].y + 5, 25, 2, 22));
+                        }
+                        
+                        // Triggers on first level of asteroids
+                        else if(asteroids[l].level === 2)
+                        {
+                            // Spawns two smaller asteroids from a larger one
+                            asteroids.push(new Asteroid(asteroids[l].x - 5, asteroids[l].y - 5, 15, 3, 12));
+                            asteroids.push(new Asteroid(asteroids[l].x + 5, asteroids[l].y + 5, 15, 3, 12));
+                        }
+                        
+                        // Removes the colliding asteroid and bullet from their arrays
+                        asteroids.splice(l, 1);
+                        bullets.splice(m, 1);
+
+                        // Increments score
+                        score += 20;
+
+                        // Breaks out of the nested loops
+                        break loop1;
+                    }
+                }
+            }
+    }
+
+    // Checks if the ship is 'dead' or 'alive'. If alive, then continue updating and redrawing
+    if(ship.visible)
+    {
+        ship.Update();
+        ship.Draw();
+    }
+
+    //Redraws bullets on each frame
+    if(bullets.length !== 0)
+    {
+        for(let i = 0; i < bullets.length; i++)
+        {
+            bullets[i].Update();
+            bullets[i].Draw();
+        }
+    }
+
+    //Redraws asteroids on each frame
+    if(asteroids.length !== 0)
+    {
+        for(let j = 0; j < asteroids.length; j++)
+        {
+            asteroids[j].Update();
+            asteroids[j].Draw(j);
+        }
+    }
+
+    requestAnimationFrame(Render);
+}
